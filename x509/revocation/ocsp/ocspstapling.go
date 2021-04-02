@@ -4,7 +4,7 @@ import(
 	"encoding/asn1"
 	"encoding/base64"
 	"errors"
-	"github.com/zmap/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/pkix"
 
 	ct "github.com/google/certificate-transparency-go"
 	cttls "github.com/google/certificate-transparency-go/tls"

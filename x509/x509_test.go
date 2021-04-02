@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zmap/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/pkix"
 )
 
 func TestParsePKCS1PrivateKey(t *testing.T) {

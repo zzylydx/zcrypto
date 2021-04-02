@@ -21,9 +21,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/zmap/zcrypto/x509"
-	"github.com/zmap/zcrypto/x509/revocation/ocsp"
-	"github.com/zmap/zcrypto/x509/ct"
+	"github.com/zzylydx/zcrypto/x509"
+	"github.com/zzylydx/zcrypto/x509/revocation/ocsp"
+	"github.com/zzylydx/zcrypto/x509/ct"
 )
 
 type clientHandshakeState struct {

@@ -5,8 +5,8 @@ import (
 	"encoding/asn1"
 	"fmt"
 
-	"github.com/zmap/zcrypto/x509/pkix"
-	"github.com/zmap/zcrypto/x509/revocation/ocsp"
+	"github.com/zzylydx/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/revocation/ocsp"
 	ct "github.com/google/certificate-transparency-go"
 )
 

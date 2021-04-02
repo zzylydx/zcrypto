@@ -35,8 +35,8 @@ import (
 	"time"
 
 	"github.com/weppos/publicsuffix-go/publicsuffix"
-	"github.com/zmap/zcrypto/x509/ct"
-	"github.com/zmap/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/ct"
+	"github.com/zzylydx/zcrypto/x509/pkix"
 )
 
 //新增，目的是存储sct的字节***********************************

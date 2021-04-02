@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zmap/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/pkix"
 )
 
 var testName = pkix.Name{

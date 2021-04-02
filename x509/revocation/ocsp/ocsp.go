@@ -8,9 +8,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/zmap/zcrypto/x509"
-	"github.com/zmap/zcrypto/x509/pkix"
-	"github.com/zmap/zcrypto/x509/revocation/crl"
+	"github.com/zzylydx/zcrypto/x509"
+	"github.com/zzylydx/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/revocation/crl"
 )
 
 // ResponseStatus contains the result of an OCSP request. See

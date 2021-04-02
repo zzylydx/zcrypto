@@ -2,8 +2,8 @@ ZCrypto
 =======
 
 [![Build Status](https://travis-ci.org/zmap/zcrypto.svg?branch=master)](https://travis-ci.org/zmap/zcrypto)
-[![Go Report Card](https://goreportcard.com/badge/github.com/zmap/zcrypto)](https://goreportcard.com/report/github.com/zmap/zcrypto)
-[![GoDoc](https://godoc.org/github.com/zmap/zcrypto?status.svg)](https://godoc.org/github.com/zmap/zcrypto)
+[![Go Report Card](https://goreportcard.com/badge/github.com/zzylydx/zcrypto)](https://goreportcard.com/report/github.com/zzylydx/zcrypto)
+[![GoDoc](https://godoc.org/github.com/zzylydx/zcrypto?status.svg)](https://godoc.org/github.com/zzylydx/zcrypto)
 
 ZCrypto contains specialized versions of tls and x509. It is written in Golang and is primarily based on [Golang's TLS library](https://github.com/golang/go/blob/master/src/crypto/tls).
 
@@ -28,4 +28,4 @@ A fork of the Google Certificate Transparency Golang library, designed to play n
 
 ## Documentation
 
-Documentation uses Godoc. See https://godoc.org/github.com/zmap/zcrypto.
+Documentation uses Godoc. See https://godoc.org/github.com/zzylydx/zcrypto.

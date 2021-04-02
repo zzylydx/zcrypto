@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"strings"
 
-	jsonKeys "github.com/zmap/zcrypto/json"
-	"github.com/zmap/zcrypto/x509"
-	"github.com/zmap/zcrypto/x509/ct"
+	jsonKeys "github.com/zzylydx/zcrypto/json"
+	"github.com/zzylydx/zcrypto/x509"
+	"github.com/zzylydx/zcrypto/x509/ct"
 )
 
 var ErrUnimplementedCipher error = errors.New("unimplemented cipher suite")

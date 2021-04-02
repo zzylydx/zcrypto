@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/zmap/zcrypto/x509"
-	"github.com/zmap/zcrypto/x509/pkix"
-	"github.com/zmap/zcrypto/x509/revocation/crl"
+	"github.com/zzylydx/zcrypto/x509"
+	"github.com/zzylydx/zcrypto/x509/pkix"
+	"github.com/zzylydx/zcrypto/x509/revocation/crl"
 )
 
 const example_cert = `
