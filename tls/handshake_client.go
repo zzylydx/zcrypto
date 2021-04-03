@@ -661,6 +661,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 						x509SctNum++
 
 						var pars *ParsedAndRawSCT
+						pars = new(ParsedAndRawSCT)
 						c.sctlog.UsedX509 = true
 						pars.Raw = sct_raw.Raw
 						pars.Parsed = sct_raw.Parsed
@@ -721,7 +722,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 					if err_lst == nil {
 						c.sctlog.UsedOcsp = true
 						// 转换为SignedCertificateTimestamp
-						var scts []*ParsedAndRawSCT
+						//var scts []*ParsedAndRawSCT
 						for _,s := range sctList{
 							var sct ct.SignedCertificateTimestamp
 							var pars ParsedAndRawSCT
@@ -739,9 +740,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 							pars.Raw = s.Raw
 							pars.Parsed = &sct
 
-							scts = append(scts,&pars)
+							//scts = append(scts,&pars)
+							c.sctlog.OcspSct = append(c.sctlog.OcspSct,&pars)
 						}
-						c.sctlog.OcspSct = scts
 						c.sctlog.OcspSctsBundlesLength = ocspSctLen
 						c.sctlog.OcspSctsNum = ocspSctNum
 					}else {

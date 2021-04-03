@@ -1918,6 +1918,7 @@ func parseCertificate(in *certificate) (*Certificate, error) {
 				}
 				//*************修改certificate中的ParsedAndRawSCT，带有原始byte数据************
 				var pars *ParsedAndRawSCT
+				pars = new(ParsedAndRawSCT)
 				pars.Raw = scts[2 : length+2]
 				sct, err := ct.DeserializeSCT(bytes.NewReader(scts[2 : length+2]))
 				if err != nil {
