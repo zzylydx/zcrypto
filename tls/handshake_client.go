@@ -19,7 +19,6 @@ import (
 	"net"
 	"strconv"
 	"time"
-	"unsafe"
 
 	"github.com/zzylydx/zcrypto/x509"
 	"github.com/zzylydx/zcrypto/x509/revocation/ocsp"
@@ -725,17 +724,17 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 							var pars ParsedAndRawSCT
 
 							// ct.SignedCertificateTimestamp赋值
-							sct.SCTVersion = s.Parsed.SCTVersion
+							sct.SCTVersion = ct.Version(s.Parsed.SCTVersion)
 							sct.LogID = s.Parsed.LogID.KeyID
 							sct.Timestamp = s.Parsed.Timestamp
-							sct.Extensions = s.Parsed.Extensions
-							sct.Signature.HashAlgorithm = s.Parsed.Signature.Algorithm.Hash
-							sct.Signature.SignatureAlgorithm = s.Parsed.Signature.Algorithm.Signature
+							sct.Extensions = ct.CTExtensions(s.Parsed.Extensions)
+							sct.Signature.HashAlgorithm = ct.HashAlgorithm(s.Parsed.Signature.Algorithm.Hash)
+							sct.Signature.SignatureAlgorithm = ct.SignatureAlgorithm(s.Parsed.Signature.Algorithm.Signature)
 							sct.Signature.Signature = s.Parsed.Signature.Signature
 
 							// ParsedAndRawSCT赋值
 							pars.Raw = s.Raw
-							pars.Parsed = sct
+							pars.Parsed = &sct
 
 							scts = append(scts,&pars)
 						}
