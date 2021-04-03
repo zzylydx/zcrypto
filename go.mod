@@ -9,7 +9,6 @@ require (
 	github.com/weppos/publicsuffix-go v0.13.1-0.20210331065111-e81257c67567
 	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521
 	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4
-	github.com/zmap/zcrypto v0.0.0-20210331113710-23c79953ef34
 	golang.org/x/crypto v0.0.0-20201124201722-c8d3bf9c5392
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
