@@ -440,6 +440,9 @@ func (c *Conn) clientHandshake() error {
 
 	c.handshakeLog = new(ServerHandshake)
 	c.heartbleedLog = new(Heartbleed)
+	// 2021/4/3新增******************************
+	c.sctlog = new(SignedCertificateTimestampLog)
+	// ******************************************
 	c.writeRecord(recordTypeHandshake, helloBytes)
 	c.handshakeLog.ClientHello = hello.MakeLog()
 
