@@ -87,6 +87,33 @@ func (h HashAlgorithm) String() string {
 		return fmt.Sprintf("UNKNOWN(%d)", h)
 	}
 }
+// MarshalJSON implements the json.Marshler interface. 2021/4/4修改
+func (h *HashAlgorithm) MarshalJSON() ([]byte, error) {
+	ha := struct {
+		Name  string `json:"name"`
+		Value int    `json:"value"`
+	}{
+		Name: h.String(),
+		Value: int(*h),
+	}
+	return json.Marshal(&ha)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface. 2021/4/4修改
+func (h *HashAlgorithm) UnmarshalJSON(b []byte) error {
+	ha := struct {
+		Name  string `json:"name"`
+		Value int    `json:"value"`
+	}{}
+	if err := json.Unmarshal(b, &ha); err != nil {
+		return err
+	}
+	*h = HashAlgorithm(ha.Value)
+	if expectedName := h.String(); expectedName != ha.Name {
+		return fmt.Errorf("mismatched hash algorithm and name: algorithm: %d, name: %s, expected name: %s", ha.Value, ha.Name, expectedName)
+	}
+	return nil
+}
 
 // SignatureAlgorithm from the the DigitallySigned struct
 type SignatureAlgorithm byte
@@ -113,7 +140,33 @@ func (s SignatureAlgorithm) String() string {
 		return fmt.Sprintf("UNKNOWN(%d)", s)
 	}
 }
+// MarshalJSON implements the json.Marshler interface. 2021/4/4修改
+func (s *SignatureAlgorithm) MarshalJSON() ([]byte, error) {
+	sa := struct {
+		Name  string `json:"name"`
+		Value int    `json:"value"`
+	}{
+		Name: s.String(),
+		Value: int(*s),
+	}
+	return json.Marshal(&sa)
+}
 
+// UnmarshalJSON implements the json.Unmarshaler interface. 2021/4/4修改
+func (s *SignatureAlgorithm) UnmarshalJSON(b []byte) error {
+	sa := struct {
+		Name  string `json:"name"`
+		Value int    `json:"value"`
+	}{}
+	if err := json.Unmarshal(b, &sa); err != nil {
+		return err
+	}
+	*s = SignatureAlgorithm(sa.Value)
+	if expectedName := s.String(); expectedName != sa.Name {
+		return fmt.Errorf("mismatched signature algorithm and name: algorithm: %d, name: %s, expected name: %s", sa.Value, sa.Name, expectedName)
+	}
+	return nil
+}
 // DigitallySigned represents an RFC5246 DigitallySigned structure
 // 2021/3/28:添加序列化字段名称
 type DigitallySigned struct {
