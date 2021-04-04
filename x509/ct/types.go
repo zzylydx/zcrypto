@@ -221,8 +221,7 @@ func (d DigitallySigned) Base64String() (string, error) {
 
 // Version represents the Version enum from section 3.2 of the RFC:
 // enum { v1(0), (255) } Version;
-// 2021/4/1 修改 uint8---->uint64
-type Version uint64
+type Version uint8
 
 func (v Version) String() string {
 	switch v {
