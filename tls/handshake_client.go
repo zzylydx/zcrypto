@@ -25,9 +25,6 @@ import (
 	"github.com/zzylydx/zcrypto/x509/ct"
 )
 
-// 2021/4/5 新增发送和接受的总字节数，全局变量
-var bytesSent int
-var bytesReceived int
 
 type clientHandshakeState struct {
 	c               *Conn
@@ -237,6 +234,10 @@ func (c *Conn) clientHandshake() error {
 	var session *ClientSessionState
 	var sessionCache ClientSessionCache
 	var cacheKey string
+
+	// 2021/4/5 新增发送和接受的总字节数，局部变量
+	var bytesSent int
+	var bytesReceived int
 
 	// first, let's check if a ClientFingerprintConfiguration template was provided by the config
 	if c.config.ClientFingerprintConfiguration != nil {
@@ -461,7 +462,7 @@ func (c *Conn) clientHandshake() error {
 	}
 	serverHello, ok := msg.(*serverHelloMsg)
 	// bytesReceived++
-	bytesReceived += len(serverHello.raw)
+	bytesReceived += len(serverHello.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
@@ -545,40 +546,61 @@ func (c *Conn) clientHandshake() error {
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
-		if err := hs.readSessionTicket(); err != nil {
+		if bs,br,err := hs.readSessionTicket(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
-		if err := hs.readFinished(); err != nil {
+		if bs,br,err := hs.readFinished(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
-		if err := hs.sendFinished(); err != nil {
+		if bs,br,err := hs.sendFinished(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
 		if _, err := c.flush(); err != nil {
 			return err
 		}
 	} else {
-		if err := hs.doFullHandshake(); err != nil {
+		if bs,br,err := hs.doFullHandshake(); err != nil {
 			if err == ErrCertsOnly {
 				c.sendAlert(alertCloseNotify)
 				bytesSent += 16
 			}
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
-		if err := hs.sendFinished(); err != nil {
+		if bs,br,err := hs.sendFinished(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
 		if _, err := c.flush(); err != nil {
 			return err
 		}
-		if err := hs.readSessionTicket(); err != nil {
+		if bs,br,err := hs.readSessionTicket(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
-		if err := hs.readFinished(); err != nil {
+		if bs,br,err := hs.readFinished(); err != nil {
 			return err
+		}else {
+			bytesSent += bs
+			bytesReceived += br
 		}
 	}
 
@@ -600,17 +622,18 @@ func (c *Conn) clientHandshake() error {
 	// 将总字节数---》log
 	c.sctlog.BytesReceived = bytesReceived
 	c.sctlog.BytesSent = bytesSent
-	bytesSent = 0
-	bytesReceived = 0
 	return nil
 }
 // 2021/4/5, 统计字节数
-func (hs *clientHandshakeState) doFullHandshake() error {
+func (hs *clientHandshakeState) doFullHandshake() ( int,int, error)  {
+	// 存储字节数
+	var bytesSent int
+	var bytesReceived int
 	c := hs.c
 
 	msg, err := c.readHandshake()
 	if err != nil {
-		return err
+		return bytesSent,bytesReceived,err
 	}
 
 	var serverCert *x509.Certificate
@@ -620,11 +643,11 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	if !isAnon {
 
 		certMsg, ok := msg.(*certificateMsg)
-		bytesReceived += len(certMsg.raw)
+		bytesReceived += len(certMsg.marshal())
 		if !ok || len(certMsg.certificates) == 0 {
 			c.sendAlert(alertUnexpectedMessage)
 			bytesSent += 16
-			return unexpectedMessageError(certMsg, msg)
+			return bytesSent,bytesReceived,unexpectedMessageError(certMsg, msg)
 		}
 		hs.finishedHash.Write(certMsg.marshal())
 
@@ -647,7 +670,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if c.config.CertsOnly {
 			// short circuit!
 			err = ErrCertsOnly
-			return err
+			return bytesSent,bytesReceived,err
 		}
 
 		if !invalidCert {
@@ -707,7 +730,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				if err != nil {
 					c.sendAlert(alertBadCertificate)
 					bytesSent += 16
-					return err
+					return bytesSent,bytesReceived,err
 				}
 			}
 		}
@@ -715,7 +738,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if invalidCert {
 			c.sendAlert(alertBadCertificate)
 			bytesSent += 16
-			return errors.New("tls: failed to parse certificate from server: " + invalidCertErr.Error())
+			return bytesSent,bytesReceived,errors.New("tls: failed to parse certificate from server: " + invalidCertErr.Error())
 		}
 
 		c.peerCertificates = certs
@@ -723,13 +746,13 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if hs.serverHello.ocspStapling { //如果ocsp有响应？
 			msg, err = c.readHandshake()
 			if err != nil {
-				return err
+				return bytesSent,bytesReceived,err
 			}
 			cs, ok := msg.(*certificateStatusMsg)
 			if !ok {
 				c.sendAlert(alertUnexpectedMessage)
 				bytesSent += 16
-				return unexpectedMessageError(cs, msg)
+				return bytesSent,bytesReceived,unexpectedMessageError(cs, msg)
 			}
 			hs.finishedHash.Write(cs.marshal())
 
@@ -804,19 +827,19 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if !supportedCertKeyType {
 			c.sendAlert(alertUnsupportedCertificate)
 			bytesSent += 16
-			return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", serverCert.PublicKey)
+			return bytesSent,bytesReceived,fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", serverCert.PublicKey)
 		}
 
 		msg, err = c.readHandshake()
 		if err != nil {
-			return err
+			return bytesSent,bytesReceived,err
 		}
 	}
 
 	// If we don't support the cipher, quit before we need to read the hs.suite
 	// variable
 	if c.cipherError != nil {
-		return c.cipherError
+		return bytesSent,bytesReceived,c.cipherError
 	}
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
@@ -824,7 +847,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	keyAgreement := hs.suite.ka(c.vers)
 
 	if ok {
-		bytesReceived += len(skx.raw)
+		bytesReceived += len(skx.marshal())
 		hs.finishedHash.Write(skx.marshal())
 
 		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, serverCert, skx)
@@ -832,19 +855,19 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
 			bytesSent += 16
-			return err
+			return bytesSent,bytesReceived,err
 		}
 
 		msg, err = c.readHandshake()
 		if err != nil {
-			return err
+			return bytesSent,bytesReceived,err
 		}
 	}
 	var chainToSend *Certificate
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
 	if ok {
-		bytesReceived += len(certReq.raw)
+		bytesReceived += len(certReq.marshal())
 		certRequested = true
 
 		// RFC 4346 on the certificateAuthorities field:
@@ -887,7 +910,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 					if x509Cert, err = x509.ParseCertificate(cert); err != nil {
 						c.sendAlert(alertInternalError)
 						bytesSent += 16
-						return errors.New("tls: failed to parse client certificate #" + strconv.Itoa(i) + ": " + err.Error())
+						return bytesSent,bytesReceived,errors.New("tls: failed to parse client certificate #" + strconv.Itoa(i) + ": " + err.Error())
 					}
 				}
 
@@ -916,16 +939,16 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		msg, err = c.readHandshake()
 		if err != nil {
-			return err
+			return bytesSent,bytesReceived,err
 		}
 	}
 
 	shd, ok := msg.(*serverHelloDoneMsg)
-	bytesReceived += 4
+	bytesReceived += len(shd.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
-		return unexpectedMessageError(shd, msg)
+		return bytesSent,bytesReceived,unexpectedMessageError(shd, msg)
 	}
 	hs.finishedHash.Write(shd.marshal())
 
@@ -946,7 +969,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	if err != nil {
 		c.sendAlert(alertInternalError)
 		bytesSent += 16
-		return err
+		return bytesSent,bytesReceived,err
 	}
 
 	c.handshakeLog.ClientKeyExchange = ckx.MakeLog(keyAgreement) // key exchange
@@ -973,19 +996,19 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		default:
 			c.sendAlert(alertInternalError)
 			bytesSent += 16
-			return errors.New("unknown private key type")
+			return bytesSent,bytesReceived,errors.New("unknown private key type")
 		}
 		certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, c.config.signatureAndHashesForClient(), signatureType)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			bytesSent += 16
-			return err
+			return bytesSent,bytesReceived,err
 		}
 		digest, hashFunc, err := hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			bytesSent += 16
-			return err
+			return bytesSent,bytesReceived,err
 		}
 
 		switch key := c.config.Certificates[0].PrivateKey.(type) {
@@ -1003,7 +1026,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			bytesSent += 16
-			return errors.New("tls: failed to sign handshake with client certificate: " + err.Error())
+			return bytesSent,bytesReceived,errors.New("tls: failed to sign handshake with client certificate: " + err.Error())
 		}
 		certVerify.signature = signed
 
@@ -1041,7 +1064,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
 	}
 
-	return nil
+	return bytesSent,bytesReceived,nil
 }
 
 func (hs *clientHandshakeState) establishKeys() error {
@@ -1115,24 +1138,27 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	return false, nil
 }
 // 2021/4/5 新增统计字节变量
-func (hs *clientHandshakeState) readFinished() error {
+func (hs *clientHandshakeState) readFinished() ( int, int, error) {
+	// 存储字节数
+	var bytesSent int
+	var bytesReceived int
 	c := hs.c
 
 	c.readRecord(recordTypeChangeCipherSpec)
 	if err := c.in.error(); err != nil {
-		return err
+		return bytesSent,bytesReceived,err
 	}
 
 	msg, err := c.readHandshake()
 	if err != nil {
-		return err
+		return bytesSent,bytesReceived,err
 	}
 	serverFinished, ok := msg.(*finishedMsg)
-	bytesReceived += len(serverFinished.raw)
+	bytesReceived += len(serverFinished.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
-		return unexpectedMessageError(serverFinished, msg)
+		return bytesSent,bytesReceived,unexpectedMessageError(serverFinished, msg)
 	}
 	c.handshakeLog.ServerFinished = serverFinished.MakeLog()
 
@@ -1141,28 +1167,31 @@ func (hs *clientHandshakeState) readFinished() error {
 		subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
 		c.sendAlert(alertHandshakeFailure)
 		bytesSent += 16
-		return errors.New("tls: server's Finished message was incorrect")
+		return bytesSent,bytesReceived,errors.New("tls: server's Finished message was incorrect")
 	}
 	hs.finishedHash.Write(serverFinished.marshal())
-	return nil
+	return bytesSent,bytesReceived,nil
 }
 // 2021/4/5 统计接收到数据的字节数
-func (hs *clientHandshakeState) readSessionTicket() error {
+func (hs *clientHandshakeState) readSessionTicket()( int, int, error) {
+	// 存储字节数
+	var bytesSent int
+	var bytesReceived int
 	if !hs.serverHello.ticketSupported {
-		return nil
+		return bytesSent,bytesReceived,nil
 	}
 
 	c := hs.c
 	msg, err := c.readHandshake()
 	if err != nil {
-		return err
+		return bytesSent,bytesReceived,err
 	}
 	sessionTicketMsg, ok := msg.(*newSessionTicketMsg)
-	bytesReceived += len(sessionTicketMsg.raw)
+	bytesReceived += len(sessionTicketMsg.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
-		return unexpectedMessageError(sessionTicketMsg, msg)
+		return bytesSent,bytesReceived,unexpectedMessageError(sessionTicketMsg, msg)
 	}
 	hs.finishedHash.Write(sessionTicketMsg.marshal())
 
@@ -1175,10 +1204,13 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		lifetimeHint:       sessionTicketMsg.lifetimeHint,
 	}
 
-	return nil
+	return bytesSent,bytesReceived,nil
 }
 // 2021/4/5,统计字节数
-func (hs *clientHandshakeState) sendFinished() error {
+func (hs *clientHandshakeState) sendFinished() ( int,int, error) {
+	// 存储字节数
+	var bytesSent int
+	var bytesReceived int
 	c := hs.c
 
 	c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
@@ -1203,7 +1235,7 @@ func (hs *clientHandshakeState) sendFinished() error {
 
 	c.writeRecord(recordTypeHandshake, finished.marshal())
 	bytesSent += len(finished.marshal())
-	return nil
+	return bytesSent,bytesReceived,nil
 }
 
 func (hs *clientHandshakeState) writeClientHash(msg []byte) {
