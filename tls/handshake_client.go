@@ -600,6 +600,8 @@ func (c *Conn) clientHandshake() error {
 	// 将总字节数---》log
 	c.sctlog.BytesReceived = bytesReceived
 	c.sctlog.BytesSent = bytesSent
+	bytesSent = 0
+	bytesReceived = 0
 	return nil
 }
 // 2021/4/5, 统计字节数
@@ -838,7 +840,6 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			return err
 		}
 	}
-
 	var chainToSend *Certificate
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
