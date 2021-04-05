@@ -818,11 +818,11 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
-	bytesReceived += len(skx.raw)
 
 	keyAgreement := hs.suite.ka(c.vers)
 
 	if ok {
+		bytesReceived += len(skx.raw)
 		hs.finishedHash.Write(skx.marshal())
 
 		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, serverCert, skx)
@@ -842,8 +842,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	var chainToSend *Certificate
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
-	bytesReceived += len(certReq.raw)
 	if ok {
+		bytesReceived += len(certReq.raw)
 		certRequested = true
 
 		// RFC 4346 on the certificateAuthorities field:
