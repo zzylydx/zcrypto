@@ -136,24 +136,28 @@ type KeyMaterial struct {
 type SignedCertificateTimestampLog struct {
 	// use tag
 	UsedX509 bool `json:"used_x509"`
-	UsedTLS bool `json:"used_tls"`
+	UsedTLS  bool `json:"used_tls"`
 	UsedOcsp bool `json:"used_ocsp"`
 
 	//value
 	X509Sct []*ParsedAndRawSCT `json:"x509_sct"`
-	TlsSct []*ParsedAndRawSCT `json:"tls_sct"`
+	TlsSct  []*ParsedAndRawSCT `json:"tls_sct"`
 	OcspSct []*ParsedAndRawSCT `json:"ocsp_sct"`
 
 	//time
 
 	//byte=B,整个sct包的大小
 	X509SctsBundlesLength int `json:"x509_scts_bundles_length"`
-	TlsSctsBundlesLength int `json:"tls_scts_bundles_length"`
+	TlsSctsBundlesLength  int `json:"tls_scts_bundles_length"`
 	OcspSctsBundlesLength int `json:"ocsp_scts_bundles_length"`
+
+	//byte=B,统计发送和接受的总字节数
+	BytesSent		int `json:"bytes_sent"`
+	BytesReceived 	int `json:"bytes_received"`
 
 	//包含的sct个数
 	X509SctsNum int `json:"x509_scts_num"`
-	TlsSctsNum int `json:"tls_scts_num"`
+	TlsSctsNum 	int `json:"tls_scts_num"`
 	OcspSctsNum int `json:"ocsp_scts_num"`
 
 }

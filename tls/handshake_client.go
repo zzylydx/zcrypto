@@ -25,6 +25,10 @@ import (
 	"github.com/zzylydx/zcrypto/x509/ct"
 )
 
+// 2021/4/5 新增发送和接受的总字节数，全局变量
+var bytesSent int
+var bytesReceived int
+
 type clientHandshakeState struct {
 	c               *Conn
 	serverHello     *serverHelloMsg
@@ -276,6 +280,7 @@ func (c *Conn) clientHandshake() error {
 							c.config.ClientFingerprintConfiguration.SessionID = make([]byte, c.config.ClientFingerprintConfiguration.RandomSessionID)
 							if _, err := io.ReadFull(c.config.rand(), c.config.ClientFingerprintConfiguration.SessionID); err != nil {
 								c.sendAlert(alertInternalError)
+								bytesSent += 16
 								return errors.New("tls: short read from Rand: " + err.Error())
 							}
 
@@ -376,6 +381,7 @@ func (c *Conn) clientHandshake() error {
 			_, err := io.ReadFull(c.config.rand(), hello.random)
 			if err != nil {
 				c.sendAlert(alertInternalError)
+				bytesSent += 16
 				return errors.New("tls: short read from Rand: " + err.Error())
 			}
 		}
@@ -430,6 +436,7 @@ func (c *Conn) clientHandshake() error {
 			hello.sessionId = make([]byte, 16)
 			if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
 				c.sendAlert(alertInternalError)
+				bytesSent += 16
 				return errors.New("tls: short read from Rand: " + err.Error())
 			}
 
@@ -444,6 +451,8 @@ func (c *Conn) clientHandshake() error {
 	c.sctlog = new(SignedCertificateTimestampLog)
 	// ******************************************
 	c.writeRecord(recordTypeHandshake, helloBytes)
+	// bytesSent++
+	bytesSent += len(helloBytes)
 	c.handshakeLog.ClientHello = hello.MakeLog()
 
 	msg, err := c.readHandshake()
@@ -451,8 +460,11 @@ func (c *Conn) clientHandshake() error {
 		return err
 	}
 	serverHello, ok := msg.(*serverHelloMsg)
+	// bytesReceived++
+	bytesReceived += len(serverHello.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
+		bytesSent += 16
 		return unexpectedMessageError(serverHello, msg)
 	}
 	c.handshakeLog.ServerHello = serverHello.MakeLog() //将serverhello信息取出赋值给log
@@ -486,6 +498,7 @@ func (c *Conn) clientHandshake() error {
 	vers, ok := c.config.mutualVersion(serverHello.vers)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
+		bytesSent += 16
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", serverHello.vers)
 	}
 	c.vers = vers
@@ -526,6 +539,7 @@ func (c *Conn) clientHandshake() error {
 	if isResume {
 		if c.cipherError != nil {
 			c.sendAlert(alertHandshakeFailure)
+			bytesSent += 16
 			return c.cipherError
 		}
 		if err := hs.establishKeys(); err != nil {
@@ -547,6 +561,7 @@ func (c *Conn) clientHandshake() error {
 		if err := hs.doFullHandshake(); err != nil {
 			if err == ErrCertsOnly {
 				c.sendAlert(alertCloseNotify)
+				bytesSent += 16
 			}
 			return err
 		}
@@ -582,9 +597,12 @@ func (c *Conn) clientHandshake() error {
 	c.didResume = isResume
 	c.handshakeComplete = true
 	c.cipherSuite = suite.id
+	// 将总字节数---》log
+	c.sctlog.BytesReceived = bytesReceived
+	c.sctlog.BytesSent = bytesSent
 	return nil
 }
-
+// 2021/4/5, 统计字节数
 func (hs *clientHandshakeState) doFullHandshake() error {
 	c := hs.c
 
@@ -600,8 +618,10 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	if !isAnon {
 
 		certMsg, ok := msg.(*certificateMsg)
+		bytesReceived += len(certMsg.marshal())
 		if !ok || len(certMsg.certificates) == 0 {
 			c.sendAlert(alertUnexpectedMessage)
+			bytesSent += 16
 			return unexpectedMessageError(certMsg, msg)
 		}
 		hs.finishedHash.Write(certMsg.marshal())
@@ -684,6 +704,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			if !c.config.InsecureSkipVerify {
 				if err != nil {
 					c.sendAlert(alertBadCertificate)
+					bytesSent += 16
 					return err
 				}
 			}
@@ -691,6 +712,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		if invalidCert {
 			c.sendAlert(alertBadCertificate)
+			bytesSent += 16
 			return errors.New("tls: failed to parse certificate from server: " + invalidCertErr.Error())
 		}
 
@@ -704,6 +726,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			cs, ok := msg.(*certificateStatusMsg)
 			if !ok {
 				c.sendAlert(alertUnexpectedMessage)
+				bytesSent += 16
 				return unexpectedMessageError(cs, msg)
 			}
 			hs.finishedHash.Write(cs.marshal())
@@ -778,6 +801,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		if !supportedCertKeyType {
 			c.sendAlert(alertUnsupportedCertificate)
+			bytesSent += 16
 			return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", serverCert.PublicKey)
 		}
 
@@ -794,6 +818,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
+	bytesReceived += len(skx.marshal())
 
 	keyAgreement := hs.suite.ka(c.vers)
 
@@ -804,6 +829,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.handshakeLog.ServerKeyExchange = skx.MakeLog(keyAgreement) //key exchange
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
+			bytesSent += 16
 			return err
 		}
 
@@ -816,6 +842,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	var chainToSend *Certificate
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
+	bytesReceived += len(certReq.marshal())
 	if ok {
 		certRequested = true
 
@@ -858,6 +885,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				if j != 0 || x509Cert == nil {
 					if x509Cert, err = x509.ParseCertificate(cert); err != nil {
 						c.sendAlert(alertInternalError)
+						bytesSent += 16
 						return errors.New("tls: failed to parse client certificate #" + strconv.Itoa(i) + ": " + err.Error())
 					}
 				}
@@ -892,8 +920,10 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	shd, ok := msg.(*serverHelloDoneMsg)
+	bytesReceived += len(shd.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
+		bytesSent += 16
 		return unexpectedMessageError(shd, msg)
 	}
 	hs.finishedHash.Write(shd.marshal())
@@ -908,11 +938,13 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 		hs.finishedHash.Write(certMsg.marshal())
 		c.writeRecord(recordTypeHandshake, certMsg.marshal())
+		bytesSent += len(certMsg.marshal())
 	}
 
 	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, serverCert)
 	if err != nil {
 		c.sendAlert(alertInternalError)
+		bytesSent += 16
 		return err
 	}
 
@@ -921,6 +953,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	if ckx != nil {
 		hs.finishedHash.Write(ckx.marshal())
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
+		bytesSent += len(ckx.marshal())
 	}
 
 	if chainToSend != nil {
@@ -938,16 +971,19 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			signatureType = signatureRSA
 		default:
 			c.sendAlert(alertInternalError)
+			bytesSent += 16
 			return errors.New("unknown private key type")
 		}
 		certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, c.config.signatureAndHashesForClient(), signatureType)
 		if err != nil {
 			c.sendAlert(alertInternalError)
+			bytesSent += 16
 			return err
 		}
 		digest, hashFunc, err := hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
 		if err != nil {
 			c.sendAlert(alertInternalError)
+			bytesSent += 16
 			return err
 		}
 
@@ -965,12 +1001,14 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 		if err != nil {
 			c.sendAlert(alertInternalError)
+			bytesSent += 16
 			return errors.New("tls: failed to sign handshake with client certificate: " + err.Error())
 		}
 		certVerify.signature = signed
 
 		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		bytesSent += len(certVerify.marshal())
 	}
 
 	var cr, sr []byte
@@ -1075,7 +1113,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	}
 	return false, nil
 }
-
+// 2021/4/5 新增统计字节变量
 func (hs *clientHandshakeState) readFinished() error {
 	c := hs.c
 
@@ -1089,8 +1127,10 @@ func (hs *clientHandshakeState) readFinished() error {
 		return err
 	}
 	serverFinished, ok := msg.(*finishedMsg)
+	bytesReceived += len(serverFinished.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
+		bytesSent += 16
 		return unexpectedMessageError(serverFinished, msg)
 	}
 	c.handshakeLog.ServerFinished = serverFinished.MakeLog()
@@ -1099,12 +1139,13 @@ func (hs *clientHandshakeState) readFinished() error {
 	if len(verify) != len(serverFinished.verifyData) ||
 		subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
 		c.sendAlert(alertHandshakeFailure)
+		bytesSent += 16
 		return errors.New("tls: server's Finished message was incorrect")
 	}
 	hs.finishedHash.Write(serverFinished.marshal())
 	return nil
 }
-
+// 2021/4/5 统计接收到数据的字节数
 func (hs *clientHandshakeState) readSessionTicket() error {
 	if !hs.serverHello.ticketSupported {
 		return nil
@@ -1116,8 +1157,10 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return err
 	}
 	sessionTicketMsg, ok := msg.(*newSessionTicketMsg)
+	bytesReceived += len(sessionTicketMsg.marshal())
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
+		bytesSent += 16
 		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
 	hs.finishedHash.Write(sessionTicketMsg.marshal())
@@ -1133,11 +1176,12 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 
 	return nil
 }
-
+// 2021/4/5,统计字节数
 func (hs *clientHandshakeState) sendFinished() error {
 	c := hs.c
 
 	c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	bytesSent += len([]byte{1})
 	if hs.serverHello.nextProtoNeg {
 		nextProto := new(nextProtoMsg)
 		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.nextProtos)
@@ -1147,6 +1191,7 @@ func (hs *clientHandshakeState) sendFinished() error {
 
 		hs.finishedHash.Write(nextProto.marshal())
 		c.writeRecord(recordTypeHandshake, nextProto.marshal())
+		bytesSent += len(nextProto.marshal())
 	}
 
 	finished := new(finishedMsg)
@@ -1156,6 +1201,7 @@ func (hs *clientHandshakeState) sendFinished() error {
 	c.handshakeLog.ClientFinished = finished.MakeLog()
 
 	c.writeRecord(recordTypeHandshake, finished.marshal())
+	bytesSent += len(finished.marshal())
 	return nil
 }
 
