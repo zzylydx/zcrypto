@@ -461,7 +461,7 @@ func (c *Conn) clientHandshake() error {
 	}
 	serverHello, ok := msg.(*serverHelloMsg)
 	// bytesReceived++
-	bytesReceived += len(serverHello.marshal())
+	bytesReceived += len(serverHello.raw)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
@@ -618,7 +618,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	if !isAnon {
 
 		certMsg, ok := msg.(*certificateMsg)
-		bytesReceived += len(certMsg.marshal())
+		bytesReceived += len(certMsg.raw)
 		if !ok || len(certMsg.certificates) == 0 {
 			c.sendAlert(alertUnexpectedMessage)
 			bytesSent += 16
@@ -818,7 +818,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
-	bytesReceived += len(skx.marshal())
+	bytesReceived += len(skx.raw)
 
 	keyAgreement := hs.suite.ka(c.vers)
 
@@ -842,7 +842,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	var chainToSend *Certificate
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
-	bytesReceived += len(certReq.marshal())
+	bytesReceived += len(certReq.raw)
 	if ok {
 		certRequested = true
 
@@ -920,7 +920,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 
 	shd, ok := msg.(*serverHelloDoneMsg)
-	bytesReceived += len(shd.marshal())
+	bytesReceived += 4
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
@@ -1127,7 +1127,7 @@ func (hs *clientHandshakeState) readFinished() error {
 		return err
 	}
 	serverFinished, ok := msg.(*finishedMsg)
-	bytesReceived += len(serverFinished.marshal())
+	bytesReceived += len(serverFinished.raw)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
@@ -1157,7 +1157,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return err
 	}
 	sessionTicketMsg, ok := msg.(*newSessionTicketMsg)
-	bytesReceived += len(sessionTicketMsg.marshal())
+	bytesReceived += len(sessionTicketMsg.raw)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		bytesSent += 16
