@@ -145,10 +145,10 @@ type SignedCertificateTimestampLog struct {
 	OcspSct []*ParsedAndRawSCT `json:"ocsp_sct"`
 
 	//time
-	X509Time 		int `json:"x509_time"`
-	TlsTime			int	`json:"tls_time"`
-	OcspTime		int `json:"ocsp_time"`
-	HandshakeTime	int `json:"handshake_time"`
+	X509Time 		int64 `json:"x509_time"`
+	TlsTime			int64 `json:"tls_time"`
+	OcspTime		int64 `json:"ocsp_time"`
+	HandshakeTime	int64 `json:"handshake_time"`
 
 	//byte=B,整个sct包的大小
 	X509SctsBundlesLength int `json:"x509_scts_bundles_length"`
