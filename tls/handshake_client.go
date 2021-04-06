@@ -227,7 +227,7 @@ func (c *ClientFingerprintConfiguration) marshal(config *Config) ([]byte, error)
 // 2021/3/30修改，将信息提取出
 func (c *Conn) clientHandshake() error {
 	// 2021/4/5 新增计算时间
-	startTime := time.Now().Nanosecond()
+	startTime := time.Now()
 
 	if c.config == nil {
 		c.config = defaultConfig()
@@ -489,7 +489,7 @@ func (c *Conn) clientHandshake() error {
 		}
 		c.sctlog.UsedTLS = true
 		// tlstime
-		c.sctlog.TlsTime = time.Now().Nanosecond() - startTime
+		c.sctlog.TlsTime = time.Since(startTime).Nanoseconds()
 	}else{
 		c.sctlog.UsedTLS = false
 		c.sctlog.TlsSctsBundlesLength = sctLen
@@ -629,12 +629,12 @@ func (c *Conn) clientHandshake() error {
 	c.sctlog.BytesSent = bytesSent
 
 	// handshaketime
-	c.sctlog.HandshakeTime = time.Now().Nanosecond() - startTime
+	c.sctlog.HandshakeTime = time.Since(startTime).Nanoseconds()
 
 	return nil
 }
 // 2021/4/5, 统计字节数
-func (hs *clientHandshakeState) doFullHandshake(startTime int) ( int,int, error)  {
+func (hs *clientHandshakeState) doFullHandshake(startTime time.Time) ( int,int, error)  {
 	// 存储字节数
 	var bytesSent int
 	var bytesReceived int
@@ -732,7 +732,7 @@ func (hs *clientHandshakeState) doFullHandshake(startTime int) ( int,int, error)
 				c.sctlog.UsedX509 = false
 			}else {
 				// x509time
-				c.sctlog.X509Time = time.Now().Nanosecond() - startTime
+				c.sctlog.X509Time = time.Since(startTime).Nanoseconds()
 			}
 
 			//*************************************************************************
@@ -781,7 +781,7 @@ func (hs *clientHandshakeState) doFullHandshake(startTime int) ( int,int, error)
 					ocspSctLen,ocspSctNum,sctList, err_lst = ocsp.ParseSCTListFromOcspResponse(response)
 					if err_lst == nil {
 						// ocsptime
-						c.sctlog.OcspTime = time.Now().Nanosecond() - startTime
+						c.sctlog.OcspTime = time.Since(startTime).Nanoseconds()
 						c.sctlog.UsedOcsp = true
 						// 转换为SignedCertificateTimestamp
 						//var scts []*ParsedAndRawSCT
