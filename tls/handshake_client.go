@@ -226,6 +226,9 @@ func (c *ClientFingerprintConfiguration) marshal(config *Config) ([]byte, error)
 }
 // 2021/3/30修改，将信息提取出
 func (c *Conn) clientHandshake() error {
+	// 2021/4/5 新增计算时间
+	startTime := time.Now().Nanosecond()
+
 	if c.config == nil {
 		c.config = defaultConfig()
 	}
@@ -485,6 +488,8 @@ func (c *Conn) clientHandshake() error {
 			c.sctlog.TlsSct = append(c.sctlog.TlsSct,&pars)
 		}
 		c.sctlog.UsedTLS = true
+		// tlstime
+		c.sctlog.TlsTime = time.Now().Nanosecond() - startTime
 	}else{
 		c.sctlog.UsedTLS = false
 		c.sctlog.TlsSctsBundlesLength = sctLen
@@ -568,7 +573,7 @@ func (c *Conn) clientHandshake() error {
 			return err
 		}
 	} else {
-		if bs,br,err := hs.doFullHandshake(); err != nil {
+		if bs,br,err := hs.doFullHandshake(startTime); err != nil {
 			if err == ErrCertsOnly {
 				c.sendAlert(alertCloseNotify)
 				bytesSent += 16
@@ -622,10 +627,14 @@ func (c *Conn) clientHandshake() error {
 	// 将总字节数---》log
 	c.sctlog.BytesReceived = bytesReceived
 	c.sctlog.BytesSent = bytesSent
+
+	// handshaketime
+	c.sctlog.HandshakeTime = time.Now().Nanosecond() - startTime
+
 	return nil
 }
 // 2021/4/5, 统计字节数
-func (hs *clientHandshakeState) doFullHandshake() ( int,int, error)  {
+func (hs *clientHandshakeState) doFullHandshake(startTime int) ( int,int, error)  {
 	// 存储字节数
 	var bytesSent int
 	var bytesReceived int
@@ -721,6 +730,9 @@ func (hs *clientHandshakeState) doFullHandshake() ( int,int, error)  {
 			// 判断是否全部的证书不包含sct
 			if flag == len(certs){
 				c.sctlog.UsedX509 = false
+			}else {
+				// x509time
+				c.sctlog.X509Time = time.Now().Nanosecond() - startTime
 			}
 
 			//*************************************************************************
@@ -768,6 +780,8 @@ func (hs *clientHandshakeState) doFullHandshake() ( int,int, error)  {
 				if err == nil{
 					ocspSctLen,ocspSctNum,sctList, err_lst = ocsp.ParseSCTListFromOcspResponse(response)
 					if err_lst == nil {
+						// ocsptime
+						c.sctlog.OcspTime = time.Now().Nanosecond() - startTime
 						c.sctlog.UsedOcsp = true
 						// 转换为SignedCertificateTimestamp
 						//var scts []*ParsedAndRawSCT
