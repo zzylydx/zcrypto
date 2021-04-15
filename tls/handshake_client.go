@@ -474,17 +474,18 @@ func (c *Conn) clientHandshake() error {
 	c.handshakeLog.ServerHello = serverHello.MakeLog() //将serverhello信息取出赋值给log
 
 	// 2021/3/30 修改取出 sct by sct extension.*****************
+	// 2021/4/15 修改：serverHello.MakeLog().SignedCertificateTimestamps--》c.handshakeLog.ServerHello.SignedCertificateTimestamps
 	// 求sct bundles的大小，单位：B
 	sctLen := 0
 	sctNum := 0
-	if len(serverHello.MakeLog().SignedCertificateTimestamps) > 0{
+	if len(c.handshakeLog.ServerHello.SignedCertificateTimestamps) > 0{
 		for _, sct := range serverHello.scts {
 			sctLen += len(sct)
 			sctNum++
 		}
 		c.sctlog.TlsSctsBundlesLength = sctLen
 		c.sctlog.TlsSctsNum = sctNum
-		for _, pars := range serverHello.MakeLog().SignedCertificateTimestamps {
+		for _, pars := range c.handshakeLog.ServerHello.SignedCertificateTimestamps {
 			c.sctlog.TlsSct = append(c.sctlog.TlsSct,&pars)
 		}
 		c.sctlog.UsedTLS = true

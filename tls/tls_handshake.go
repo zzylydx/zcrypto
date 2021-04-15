@@ -144,7 +144,7 @@ type SignedCertificateTimestampLog struct {
 	TlsSct  []*ParsedAndRawSCT `json:"tls_sct"`
 	OcspSct []*ParsedAndRawSCT `json:"ocsp_sct"`
 
-	//time
+	//time,ns(纳秒，1ms=10^6ns)
 	X509Time 		int64 `json:"x509_time"`
 	TlsTime			int64 `json:"tls_time"`
 	OcspTime		int64 `json:"ocsp_time"`
