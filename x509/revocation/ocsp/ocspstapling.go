@@ -119,8 +119,32 @@ func ParseSCTListFromOcspResponse(response *Response)(int,int,[]NewParsedAndRawS
 	return sctLen,sctNum,sctList, err_end
 }
 
+/*
+	下面两个函数用于webmail study
+ */
+
+// DeserializeSCTList deserializes a list of SCTs. copy of DeserializeSCTList
+func DeserializeSCTListByte(serializedSCTList []byte) ([][]byte, error) {
+	var sctList ctx509.SignedCertificateTimestampList
+	var sctListByte [][]byte
+	rest, err := cttls.Unmarshal(serializedSCTList, &sctList)
+	if err != nil {
+		return nil, err
+	}
+	if len(rest) != 0 {
+		return nil,errors.New("serialized SCT list contained trailing garbage")
+	}
+	// 添加sct 到list里面
+	for _, serializedSCT := range sctList.SCTList {
+		sctListByte = append(sctListByte,serializedSCT.Val)
+	}
+
+	return sctListByte, nil
+}
+
 // 解析传递过来的ocsp response,解析得到sct by ocsp stapling
-func ParseSCTListFromOcspResponseByte(response *Response)([]byte, error){
+func ParseSCTListFromOcspResponseByte(response *Response)([][]byte, error){
+	var SctListByte [][]byte
 	// 将response中的sct扩展提取出来
 	var sctExt pkix.Extension
 	for _,ext := range response.Extensions {
@@ -133,9 +157,23 @@ func ParseSCTListFromOcspResponseByte(response *Response)([]byte, error){
 	// 提取sct
 	sctlistByte := sctExt.Value
 
+	var errSctSeri error
+	var err_end error
 	if numBytes := len(sctlistByte); numBytes != 0 {
-		return sctlistByte, nil
+		var serializedSCTList []byte
+		rest := make([]byte, numBytes)
+		copy(rest,sctlistByte)
+		for len(rest) != 0 {
+			rest, errSctSeri = asn1.Unmarshal(rest, &serializedSCTList)
+			if errSctSeri != nil {
+				return nil, errSctSeri
+			}
+		}
+		SctListByte, err_end = DeserializeSCTListByte(serializedSCTList)
+		if err_end != nil {
+			return nil, err_end
+		}
 	}
 
-	return nil, errors.New("no SCT in ocsp response")
+	return SctListByte, nil
 }
