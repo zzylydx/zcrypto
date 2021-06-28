@@ -118,3 +118,24 @@ func ParseSCTListFromOcspResponse(response *Response)(int,int,[]NewParsedAndRawS
 
 	return sctLen,sctNum,sctList, err_end
 }
+
+// 解析传递过来的ocsp response,解析得到sct by ocsp stapling
+func ParseSCTListFromOcspResponseByte(response *Response)([]byte, error){
+	// 将response中的sct扩展提取出来
+	var sctExt pkix.Extension
+	for _,ext := range response.Extensions {
+		if ext.Id.Equal(sctExtOid){
+			sctExt = ext
+			break
+		}
+	}
+
+	// 提取sct
+	sctlistByte := sctExt.Value
+
+	if numBytes := len(sctlistByte); numBytes != 0 {
+		return sctlistByte, nil
+	}
+
+	return nil, errors.New("no SCT in ocsp response")
+}
